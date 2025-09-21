@@ -72,10 +72,17 @@ class JobSearcher:
 
             if self.config.has_google_api():
                 jobs = self._search_with_google_api(query, site, search_term)
+                if jobs:
+                    return jobs
+                else:
+                    logger.warning(f"Google API returned no results for {site}, trying alternative methods...")
             else:
-                jobs = self._search_with_web_scraping(query, site, search_term)
+                logger.warning(f"Google API not configured. Please add API credentials to config.yaml for reliable results.")
+                logger.info("Visit: https://developers.google.com/custom-search/v1/introduction")
 
-            return jobs
+            # Alternative: Try direct site search (if API fails or not configured)
+            alternative_jobs = self._try_alternative_search(site, search_term)
+            return alternative_jobs
 
         except Exception as e:
             logger.error(f"Error searching {site}: {e}")
@@ -85,42 +92,80 @@ class JobSearcher:
         """Search using Google Custom Search API."""
         try:
             from googleapiclient.discovery import build
+            from googleapiclient.errors import HttpError
 
             service = build("customsearch", "v1", developerKey=self.config.google_api.api_key)
 
-            # Calculate date range for filtering
-            since_date = datetime.now() - timedelta(hours=self.config.search.time_filter_hours)
-            date_restrict = f"d{self.config.search.time_filter_hours//24 or 1}"
+            # Calculate date range for filtering (past 24 hours)
+            date_restrict = f"d{max(1, self.config.search.time_filter_hours // 24)}"
 
+            # Execute search with proper error handling
             result = service.cse().list(
                 q=query,
                 cx=self.config.google_api.search_engine_id,
                 num=min(10, self.config.search.max_results_per_site),
                 dateRestrict=date_restrict,
-                sort="date"
+                sort="date",
+                safe="off",  # Include all results
+                lr="lang_en"  # English results only
             ).execute()
 
             jobs = []
             items = result.get('items', [])
 
+            logger.info(f"Google API returned {len(items)} results for {site}")
+
             for item in items:
+                # Extract additional metadata from API response
+                title = item.get('title', '')
+                url = item.get('link', '')
+                snippet = item.get('snippet', '')
+
+                # Get formatted URL (handles redirects)
+                formatted_url = item.get('formattedUrl', url)
+
+                # Extract posting date if available
+                posting_date = ''
+                page_map = item.get('pagemap', {})
+                if 'metatags' in page_map and page_map['metatags']:
+                    meta = page_map['metatags'][0]
+                    posting_date = meta.get('article:published_time', '') or meta.get('datePublished', '')
+
                 job = {
-                    'title': item.get('title', ''),
-                    'url': item.get('link', ''),
-                    'snippet': item.get('snippet', ''),
+                    'title': title,
+                    'url': url,
+                    'formatted_url': formatted_url,
+                    'snippet': snippet,
                     'source_site': site,
                     'search_term': search_term,
+                    'posting_date': posting_date,
                     'found_date': datetime.now().isoformat(),
                     'raw_data': item
                 }
-                jobs.append(job)
 
+                # Only include if it looks like a job posting
+                if self._is_job_url(url, site) or self._is_job_url(formatted_url, site):
+                    jobs.append(job)
+                else:
+                    logger.debug(f"Filtered non-job URL: {url}")
+
+            logger.info(f"Filtered to {len(jobs)} job results for {site}")
             return jobs
 
+        except HttpError as e:
+            if e.resp.status == 429:
+                logger.error(f"Google API quota exceeded for {site}")
+            elif e.resp.status == 403:
+                logger.error(f"Google API access denied for {site} - check API key and search engine ID")
+            else:
+                logger.error(f"Google API HTTP error for {site}: {e}")
+            return []
+        except ImportError:
+            logger.error("Google API client not installed. Run: pip install google-api-python-client")
+            return []
         except Exception as e:
             logger.error(f"Google API search failed for {site}: {e}")
-            # Fallback to web scraping
-            return self._search_with_web_scraping(query, site, search_term)
+            return []
 
     def _search_with_web_scraping(self, query: str, site: str, search_term: str) -> List[Dict]:
         """Search using web scraping of Google search results."""
@@ -179,19 +224,76 @@ class JobSearcher:
             logger.error(f"Web scraping search failed for {site}: {e}")
             return []
 
+    def _try_alternative_search(self, site: str, search_term: str) -> List[Dict]:
+        """Try alternative search methods when Google API fails."""
+        logger.info(f"Trying alternative search for {site}")
+
+        # For now, return empty list - can be extended with direct APIs later
+        # This could include RSS feeds, direct APIs, or other search methods
+        jobs = []
+
+        # Placeholder for future direct API integrations
+        if site == "greenhouse.io":
+            # Could add Greenhouse API integration here
+            pass
+        elif site == "lever.co":
+            # Could add Lever API integration here
+            pass
+        # Add more direct integrations as needed
+
+        return jobs
+
     def _is_job_url(self, url: str, site: str) -> bool:
-        """Check if URL is likely a job posting."""
-        if not url or not site in url:
+        """Check if URL is likely a job posting with improved logic."""
+        if not url:
             return False
 
-        # Common job posting URL patterns
+        url_lower = url.lower()
+
+        # Don't require exact site match - Google may redirect
+        # Instead, look for job indicators in the URL
         job_indicators = [
             'job', 'position', 'career', 'opening', 'opportunity',
-            'vacancy', 'role', 'hiring', 'apply', 'jobs'
+            'vacancy', 'role', 'hiring', 'apply', 'jobs', 'posting',
+            '/careers/', '/jobs/', '/job/', '/positions/', '/apply/',
+            'employment', 'work-with-us', 'join-us', 'opportunities'
         ]
 
-        url_lower = url.lower()
-        return any(indicator in url_lower for indicator in job_indicators)
+        # Check for job indicators
+        has_job_indicator = any(indicator in url_lower for indicator in job_indicators)
+
+        # Additional patterns for common ATS platforms
+        ats_patterns = [
+            'greenhouse.io/jobs/',
+            'lever.co/jobs/',
+            'boards.greenhouse.io/',
+            'jobs.lever.co/',
+            'apply.workable.com/',
+            'jobs.smartrecruiters.com/',
+            'myworkdayjobs.com/en-US/',
+            'recruiting.ultipro.com/',
+            'careers-',
+            'talent.icims.com/'
+        ]
+
+        has_ats_pattern = any(pattern in url_lower for pattern in ats_patterns)
+
+        # Exclude obvious non-job pages
+        exclude_patterns = [
+            'about', 'contact', 'privacy', 'terms', 'blog', 'news',
+            'press', 'investors', 'help', 'support', 'login', 'signup',
+            'home', 'index', 'search', 'category', 'tag', 'page'
+        ]
+
+        has_exclude_pattern = any(pattern in url_lower for pattern in exclude_patterns)
+
+        # Must have job indicator or ATS pattern, and not be excluded
+        is_likely_job = (has_job_indicator or has_ats_pattern) and not has_exclude_pattern
+
+        if not is_likely_job:
+            logger.debug(f"URL filtered as non-job: {url}")
+
+        return is_likely_job
 
     def _get_time_filter(self) -> str:
         """Generate time filter string for searches."""

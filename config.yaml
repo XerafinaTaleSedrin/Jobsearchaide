@@ -69,8 +69,21 @@ output:
   # Maximum summary length (characters)
   max_summary_length: 300
 
-# Google Search API settings (optional - will use web scraping if not provided)
+# Google Custom Search API settings (REQUIRED for reliable results)
+# Without API credentials, the agent will return zero results
 google_api:
-  # Get from: https://developers.google.com/custom-search/v1/introduction
+  # Get API key from: https://developers.google.com/custom-search/v1/introduction
+  # 1. Go to Google Cloud Console
+  # 2. Enable Custom Search API
+  # 3. Create credentials (API key)
+  # 4. Restrict API key to Custom Search API (recommended)
   api_key: ""
+
+  # Get Search Engine ID from: https://cse.google.com/cse/
+  # 1. Create a new search engine
+  # 2. Add sites to search (or search entire web)
+  # 3. Copy the Search Engine ID
   search_engine_id: ""
+
+  # Optional: Daily quota limit (default 100 free queries/day)
+  daily_quota: 100

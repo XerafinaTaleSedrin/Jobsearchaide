@@ -29,7 +29,29 @@ A powerful Python-based tool that automatically searches for remote jobs across 
 
 ## Quick Start
 
-### Basic Usage
+### 🚨 IMPORTANT: API Setup Required
+
+**This tool requires Google Custom Search API credentials to work.** Without them, you'll get zero results.
+
+1. **Get API credentials** (5 minutes):
+   ```bash
+   python main.py validate-api
+   ```
+   Follow the setup instructions displayed.
+
+2. **Update config.yaml** with your credentials:
+   ```yaml
+   google_api:
+     api_key: "your-api-key-here"
+     search_engine_id: "your-search-engine-id"
+   ```
+
+3. **Validate setup**:
+   ```bash
+   python main.py validate-api
+   ```
+
+### Basic Usage (After API Setup)
 ```bash
 # Search for software engineering jobs
 python main.py "software engineer"
@@ -64,17 +86,25 @@ The `config.yaml` file controls all search and filtering settings:
 - **Filtering**: Salary ranges, keyword exclusions, experience levels
 - **Output**: Report formats (MD/PDF/both) and styling options
 
-### Google API (Optional)
+### Google API (REQUIRED)
 
-For enhanced search capabilities, configure Google Custom Search API:
+**Google Custom Search API is required for the agent to work:**
 
-1. Get API key from [Google Custom Search](https://developers.google.com/custom-search/v1/introduction)
-2. Update `config.yaml`:
+1. **Get API Key**: [Google Cloud Console](https://console.cloud.google.com/)
+   - Create/select project → Enable Custom Search API → Create API Key
+
+2. **Get Search Engine ID**: [Custom Search Engine](https://cse.google.com/cse/)
+   - Create new search engine → Set to search entire web → Copy Search Engine ID
+
+3. **Update config.yaml**:
    ```yaml
    google_api:
      api_key: "your_api_key_here"
      search_engine_id: "your_search_engine_id"
+     daily_quota: 100  # Free tier limit
    ```
+
+4. **Validate**: `python main.py validate-api`
 
 ## How It Works
 
@@ -144,6 +174,9 @@ Options:
 ```bash
 # Setup and verify installation
 python main.py setup
+
+# Validate Google API configuration
+python main.py validate-api
 
 # List all configured job sites
 python main.py list-sites

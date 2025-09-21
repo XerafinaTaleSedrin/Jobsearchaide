@@ -38,6 +38,7 @@ class GoogleAPISettings:
     """Google API configuration."""
     api_key: str
     search_engine_id: str
+    daily_quota: int
 
 
 class Config:
@@ -97,7 +98,8 @@ class Config:
         google_data = config_data.get('google_api', {})
         self.google_api = GoogleAPISettings(
             api_key=google_data.get('api_key', ''),
-            search_engine_id=google_data.get('search_engine_id', '')
+            search_engine_id=google_data.get('search_engine_id', ''),
+            daily_quota=google_data.get('daily_quota', 100)
         )
 
         # Create output directory if it doesn't exist
@@ -106,6 +108,55 @@ class Config:
     def has_google_api(self) -> bool:
         """Check if Google API credentials are configured."""
         return bool(self.google_api.api_key and self.google_api.search_engine_id)
+
+    def validate_google_api(self) -> tuple[bool, str]:
+        """Validate Google API credentials and return status with message."""
+        if not self.google_api.api_key:
+            return False, "Google API key is missing. Please add it to config.yaml"
+
+        if not self.google_api.search_engine_id:
+            return False, "Google Search Engine ID is missing. Please add it to config.yaml"
+
+        # Basic format validation
+        if len(self.google_api.api_key) < 20:
+            return False, "Google API key appears to be invalid (too short)"
+
+        if len(self.google_api.search_engine_id) < 10:
+            return False, "Google Search Engine ID appears to be invalid (too short)"
+
+        return True, "Google API credentials appear to be configured correctly"
+
+    def get_api_setup_instructions(self) -> str:
+        """Get detailed API setup instructions."""
+        return """
+🔧 Google Custom Search API Setup Instructions:
+
+1. GET API KEY:
+   • Go to: https://console.cloud.google.com/
+   • Create or select a project
+   • Enable "Custom Search API"
+   • Go to "Credentials" → "Create Credentials" → "API Key"
+   • Copy the API key
+
+2. GET SEARCH ENGINE ID:
+   • Go to: https://cse.google.com/cse/
+   • Click "Add" to create a new search engine
+   • For "Sites to search": enter "*" (search entire web) or specific job sites
+   • Click "Create"
+   • Copy the "Search engine ID"
+
+3. UPDATE CONFIG:
+   • Edit config.yaml
+   • Paste API key in google_api.api_key
+   • Paste Search Engine ID in google_api.search_engine_id
+
+4. QUOTA LIMITS:
+   • Free tier: 100 queries/day
+   • Paid tier: $5 per 1000 queries
+   • Each job site search uses 1 query
+
+⚠️  Without API credentials, the job search will return zero results!
+"""
 
     def update_search_terms(self, search_terms: List[str]):
         """Update the search terms for this session."""

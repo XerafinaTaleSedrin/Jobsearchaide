@@ -37,6 +37,15 @@ class JobSearchAgent:
         logger.info("Starting Automated Job Search Agent")
         logger.info(f"Search terms: {search_terms}")
 
+        # Validate API configuration
+        api_valid, api_message = self.config.validate_google_api()
+        if not api_valid:
+            logger.error(f"API Configuration Error: {api_message}")
+            logger.info(self.config.get_api_setup_instructions())
+            return {}
+
+        logger.info("Google API credentials validated successfully")
+
         # Update configuration with current search terms
         self.config.update_search_terms(search_terms)
 
@@ -268,6 +277,29 @@ def setup(config: str):
     click.echo("\n📖 Usage examples:")
     click.echo('   python main.py "software engineer"')
     click.echo('   python main.py "data scientist" "machine learning engineer" --output-format pdf')
+
+
+@cli.command()
+@click.option('--config', '-c', default='config.yaml', help='Configuration file path')
+def validate_api(config: str):
+    """Validate Google API configuration."""
+    try:
+        from config import load_config
+        config_obj = load_config(config)
+
+        api_valid, api_message = config_obj.validate_google_api()
+
+        if api_valid:
+            click.echo("✅ Google API Configuration Valid")
+            click.echo(f"   {api_message}")
+            click.echo(f"   Daily quota: {config_obj.google_api.daily_quota} queries")
+        else:
+            click.echo("❌ Google API Configuration Invalid")
+            click.echo(f"   {api_message}")
+            click.echo(config_obj.get_api_setup_instructions())
+
+    except Exception as e:
+        click.echo(f"❌ Error validating API: {e}")
 
 
 @cli.command()
