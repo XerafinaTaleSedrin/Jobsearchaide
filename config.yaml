@@ -1,0 +1,76 @@
+# Job Search Configuration
+search_settings:
+  # Time filter for recent jobs (hours)
+  time_filter_hours: 24
+
+  # Maximum results per search
+  max_results_per_site: 50
+
+  # Request delay between searches (seconds)
+  request_delay: 2
+
+# Job sites to search (ATS platforms and job boards)
+job_sites:
+  ats_platforms:
+    - "icims.com"
+    - "greenhouse.io"
+    - "lever.co"
+    - "jobvite.io"
+    - "ashbyhq.com"
+    - "smartrecruiters.com"
+    - "myworkdayjobs.com"
+
+  additional_platforms:
+    - "startup.jobs"
+    - "wellfound.com"
+    - "builtin.com"
+    - "startups.gallery"
+
+# Default job search terms (can be overridden via CLI)
+default_searches:
+  - "software engineer"
+  - "data scientist"
+  - "product manager"
+
+# Filtering options
+filters:
+  # Keyword exclusions (case-insensitive)
+  exclude_keywords:
+    - "on-site"
+    - "in-person"
+    - "hybrid"
+    - "intern"
+    - "internship"
+
+  # Salary filtering (USD per year)
+  salary_ranges:
+    minimum: 50000
+    maximum: 500000
+
+  # Experience level filtering
+  exclude_experience_levels:
+    - "entry level"
+    - "intern"
+
+# Output settings
+output:
+  # Format options: markdown, pdf, both
+  format: "both"
+
+  # Output directory
+  output_dir: "./reports"
+
+  # Report filename template
+  filename_template: "job_search_{timestamp}_{search_term}"
+
+  # Include job description summaries
+  include_summaries: true
+
+  # Maximum summary length (characters)
+  max_summary_length: 300
+
+# Google Search API settings (optional - will use web scraping if not provided)
+google_api:
+  # Get from: https://developers.google.com/custom-search/v1/introduction
+  api_key: ""
+  search_engine_id: ""
