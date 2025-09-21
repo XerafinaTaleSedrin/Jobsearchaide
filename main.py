@@ -304,6 +304,39 @@ def validate_api(config: str):
 
 @cli.command()
 @click.option('--config', '-c', default='config.yaml', help='Configuration file path')
+def test_sources(config: str):
+    """Test connectivity to alternative job sources."""
+    try:
+        from config import load_config
+        from alternative_sources import AlternativeJobSources
+
+        config_obj = load_config(config)
+        alt_sources = AlternativeJobSources(config_obj)
+
+        click.echo("🔍 Testing Alternative Job Sources...")
+
+        results = alt_sources.test_alternative_sources()
+
+        for source_name, is_available in results.items():
+            status = "✅ Available" if is_available else "❌ Unavailable"
+            click.echo(f"   {source_name}: {status}")
+
+        available_count = sum(results.values())
+        total_count = len(results)
+
+        click.echo(f"\n📊 Summary: {available_count}/{total_count} sources available")
+
+        if available_count > 0:
+            click.echo("✅ Alternative sources can provide backup job results")
+        else:
+            click.echo("⚠️  No alternative sources available - Google API is essential")
+
+    except Exception as e:
+        click.echo(f"❌ Error testing sources: {e}")
+
+
+@cli.command()
+@click.option('--config', '-c', default='config.yaml', help='Configuration file path')
 def list_sites(config: str):
     """List all configured job sites."""
     try:

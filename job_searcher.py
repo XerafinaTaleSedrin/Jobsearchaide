@@ -228,18 +228,28 @@ class JobSearcher:
         """Try alternative search methods when Google API fails."""
         logger.info(f"Trying alternative search for {site}")
 
-        # For now, return empty list - can be extended with direct APIs later
-        # This could include RSS feeds, direct APIs, or other search methods
         jobs = []
 
-        # Placeholder for future direct API integrations
-        if site == "greenhouse.io":
-            # Could add Greenhouse API integration here
-            pass
-        elif site == "lever.co":
-            # Could add Lever API integration here
-            pass
-        # Add more direct integrations as needed
+        # Try RSS feeds and direct APIs for specific sites
+        try:
+            from alternative_sources import AlternativeJobSources
+            alt_sources = AlternativeJobSources(self.config)
+
+            # For specific sites, try targeted approaches
+            if site in ['remoteok.io', 'weworkremotely.com']:
+                jobs = alt_sources._search_remote_boards(search_term)
+            elif 'indeed' in site:
+                jobs = alt_sources._search_rss_feeds(search_term)
+            else:
+                # General fallback - try RSS feeds
+                rss_jobs = alt_sources._search_rss_feeds(search_term)
+                # Filter for jobs that might be from the target site
+                jobs = [job for job in rss_jobs if site in job.get('url', '').lower()]
+
+            logger.info(f"Alternative search for {site}: {len(jobs)} jobs found")
+
+        except Exception as e:
+            logger.warning(f"Alternative search failed for {site}: {e}")
 
         return jobs
 

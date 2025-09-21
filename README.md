@@ -178,8 +178,17 @@ python main.py setup
 # Validate Google API configuration
 python main.py validate-api
 
+# Test alternative job sources
+python main.py test-sources
+
 # List all configured job sites
 python main.py list-sites
+
+# Run comprehensive system test
+python system_test.py
+
+# Quick connectivity test
+python system_test.py --quick
 ```
 
 ## Output Structure

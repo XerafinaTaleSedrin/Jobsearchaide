@@ -25,6 +25,10 @@ job_sites:
     - "wellfound.com"
     - "builtin.com"
     - "startups.gallery"
+    - "remoteok.io"
+    - "weworkremotely.com"
+    - "remote.co"
+    - "justremote.co"
 
 # Default job search terms (can be overridden via CLI)
 default_searches:
